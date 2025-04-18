@@ -1,0 +1,304 @@
+/*******************************************************************************
+ * Copyright (c) 2015 - 2017
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
+package go.graphics.android;
+
+import android.content.Context;
+import android.opengl.EGL14;
+import android.opengl.EGLExt;
+import android.opengl.GLSurfaceView;
+import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+
+import java.util.Set;
+import java.util.function.Supplier;
+
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.opengles.GL10;
+
+import go.graphics.GLDrawContext;
+import go.graphics.RedrawListener;
+import go.graphics.UIPoint;
+import go.graphics.area.Area;
+import go.graphics.event.GOEvent;
+import go.graphics.event.GOEventHandlerProvider;
+import go.graphics.event.command.EModifier;
+import go.graphics.event.interpreter.AbstractEventConverter;
+
+public class GOSurfaceView extends GLSurfaceView implements RedrawListener, GOEventHandlerProvider {
+
+	private final Area area;
+
+	private final ActionAdapter actionAdapter;
+
+	private GLESDrawContext drawcontext;
+
+	private IContextDestroyedListener contextDestroyedListener = null;
+
+	public GOSurfaceView(Context context, Area area, Supplier<Set<EModifier>> modifiers) {
+		super(context);
+		this.area = area;
+		actionAdapter = new ActionAdapter(getContext(), this, modifiers);
+
+		setEGLContextFactory(new Factory());
+		setRenderer(new Renderer(context));
+		setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+		setPreserveEGLContextOnPause(true);
+		area.addRedrawListener(this);
+	}
+
+	@Override
+	public boolean onTouchEvent(MotionEvent e) {
+		actionAdapter.onTouchEvent(e);
+		return true;
+	}
+
+	@Override
+	public void onPause() {
+		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		super.onPause();
+	}
+
+	@Override
+	public void onResume() {
+		setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+		super.onResume();
+	}
+
+	private class ActionAdapter extends AbstractEventConverter {
+
+		private final Supplier<Set<EModifier>> modifiers;
+
+		protected ActionAdapter(Context context, GOEventHandlerProvider provider, Supplier<Set<EModifier>> modifiers) {
+			super(provider);
+			gestureDetector = new GestureDetector(context, gestureListener);
+			longPressDetector = new GestureDetector(context, longPressListener);
+			scaleGestureDetector = new ScaleGestureDetector(context, scaleGestureListener);
+			this.modifiers = modifiers;
+
+			gestureDetector.setIsLongpressEnabled(false);
+		}
+
+		@Override
+		protected Set<EModifier> getCurrentModifiers() {
+			return modifiers.get();
+		}
+
+		/**
+		 * The pan start center, in GO space
+		 */
+		private UIPoint panStart = new UIPoint(0, 0);
+
+		private final GestureDetector longPressDetector;
+		private final GestureDetector.SimpleOnGestureListener longPressListener = new GestureDetector.SimpleOnGestureListener() {
+			@Override
+			public void onLongPress(MotionEvent e) {
+				endPan(currentPoint(e));
+				startDraw(currentPoint(e));
+			}
+		};
+
+		private final GestureDetector gestureDetector;
+		private final GestureDetector.SimpleOnGestureListener gestureListener = new GestureDetector.SimpleOnGestureListener() {
+			@Override
+			public boolean onSingleTapUp(MotionEvent e) {
+				if (drawStarted()) {
+					abortDraw();
+					fireMoveTo(e);
+				} else {
+					fireSelectPoint(e);
+				}
+				return true;
+			}
+
+			@Override
+			public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+				if (drawStarted()) {
+					updateDrawPosition(currentPoint(e2));
+				} else if (panStarted()) {
+					updatePanPosition(relativePanPoint(e2));
+				} else {
+					panStart = currentPoint(e2);
+					startPan(new UIPoint(0, 0));
+				}
+
+				return true;
+			}
+		};
+
+		private final ScaleGestureDetector scaleGestureDetector;
+		private final ScaleGestureDetector.OnScaleGestureListener scaleGestureListener = new ScaleGestureDetector.OnScaleGestureListener() {
+			private float startSpan;
+
+			@Override
+			public boolean onScaleBegin(ScaleGestureDetector detector) {
+				startSpan = detector.getCurrentSpan();
+				startZoom();
+				return true;
+			}
+
+			@Override
+			public boolean onScale(ScaleGestureDetector detector) {
+				updateZoomFactor(detector.getCurrentSpan() / startSpan);
+				return true;
+			}
+
+			@Override
+			public void onScaleEnd(ScaleGestureDetector detector) {
+				endZoomEvent(detector.getCurrentSpan() / startSpan, null);
+			}
+		};
+
+		public void onTouchEvent(MotionEvent e) {
+			scaleGestureDetector.onTouchEvent(e);
+			gestureDetector.onTouchEvent(e);
+			longPressDetector.onTouchEvent(e);
+
+			if (e.getAction() == MotionEvent.ACTION_UP) {
+				if (drawStarted()) {
+					endDraw(currentPoint(e));
+				}
+
+				if (panStarted()) {
+					endPan(relativePanPoint(e));
+				}
+			}
+
+			if (e.getPointerCount() > 1) {
+				if (drawStarted()) {
+					abortDraw();
+				}
+
+				if (panStarted()) {
+					endPan(relativePanPoint(e));
+				}
+			}
+		}
+
+		private UIPoint relativePanPoint(MotionEvent e) {
+			return new UIPoint(e.getX() - panStart.getX(), getHeight() - e.getY() - panStart.getY());
+		}
+
+		private UIPoint currentPoint(MotionEvent e) {
+			return new UIPoint(e.getX(), getHeight() - e.getY());
+		}
+
+		private void fireSelectPoint(MotionEvent e) {
+			fireCommandEvent(new UIPoint(e.getX(), getHeight() - e.getY()), true);
+		}
+
+		private void fireMoveTo(MotionEvent e) {
+			fireCommandEvent(new UIPoint(e.getX(), getHeight() - e.getY()), false);
+		}
+	}
+
+	private class Renderer implements GLSurfaceView.Renderer {
+
+		private Context ctx;
+
+		private Renderer(Context aContext) {
+			this.ctx = aContext;
+		}
+
+		@Override
+		public void onDrawFrame(GL10 gl) {
+			drawcontext.startFrame();
+			area.drawArea(drawcontext);
+			drawcontext.finishFrame();
+		}
+
+		@Override
+		public void onSurfaceChanged(GL10 gl, int width, int height) {
+			area.setWidth(width);
+			area.setHeight(height);
+			drawcontext.resize(width, height);
+		}
+
+		private GLESDrawContext createContext(GL10 gl) {
+			String version = gl.glGetString(GL10.GL_VERSION).split(" ")[2];
+			int major = version.charAt(0)-'0';
+			int minor = version.charAt(2)-'0';
+
+			if(major >= 2) {
+				return new GLESDrawContext(ctx, major >= 3);
+			} else {
+				throw new Error("wrong Opengl ES version: " + version);
+			}
+		}
+
+		@Override
+		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+			drawcontext = createContext(gl);
+		}
+	}
+
+	private class Factory implements EGLContextFactory {
+
+		@Override
+		public EGLContext createContext(EGL10 arg0, EGLDisplay display, EGLConfig config) {
+			EGLContext newCtx = null;
+			int i = 0;
+			int[][] attrs = new int[][] {
+					{EGLExt.EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGLExt.EGL_CONTEXT_MINOR_VERSION_KHR, 2, EGL10.EGL_NONE}, //3.2
+					{EGLExt.EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGLExt.EGL_CONTEXT_MINOR_VERSION_KHR, 1, EGL10.EGL_NONE}, //3.1
+					{EGLExt.EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGLExt.EGL_CONTEXT_MINOR_VERSION_KHR, 0, EGL10.EGL_NONE}, //3.0
+					{EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE}, // highest available version
+			};
+
+			while(newCtx == null && attrs.length >= i) {
+				int[] attributes = attrs[i];
+				newCtx = arg0.eglCreateContext(display, config, EGL10.EGL_NO_CONTEXT, attributes);
+				i++;
+				if(newCtx != null && arg0.eglGetError() != EGL10.EGL_SUCCESS) {
+					newCtx = null;
+				}
+			}
+			return newCtx;
+		}
+
+		@Override
+		public void destroyContext(EGL10 arg0, EGLDisplay arg1, EGLContext arg2) {
+			Log.w("gl", "Invalidating texture context");
+			if(drawcontext != null) drawcontext.invalidate();
+			IContextDestroyedListener listener = contextDestroyedListener;
+			if (listener != null) {
+				listener.glContextDestroyed();
+			}
+			arg0.eglDestroyContext(arg1, arg2);
+		}
+	}
+
+	@Override
+	public void requestRedraw() {
+		requestRender();
+	}
+
+	@Override
+	public void handleEvent(GOEvent event) {
+		area.handleEvent(event);
+	}
+
+	public GLDrawContext getDrawContext() {
+		return drawcontext;
+	}
+
+	public void setContextDestroyedListener(IContextDestroyedListener contextDestroyedListener) {
+		this.contextDestroyedListener = contextDestroyedListener;
+	}
+}

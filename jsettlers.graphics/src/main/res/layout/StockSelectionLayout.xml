@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE element SYSTEM "layout.dtd">
+<element class="jsettlers.graphics.map.controls.original.panel.selection.BuildingSelectionContent.BuildingBackgroundPanel" x="9" y="219" maxx="127" maxy="435" id="background">
+	<element class="jsettlers.graphics.map.controls.original.panel.selection.BuildingSelectionContent.PriorityButton" x="11" y="221" maxx="29" maxy="239" id="priority">
+		<image type="GUI" file="3" sequence="192" />
+		<image type="GUI" file="3" sequence="195" />
+		<image type="GUI" file="3" sequence="378" />
+	</element>
+
+	<element class="SimpleActionButton" x="107" y="221" maxx="125" maxy="239">
+		<action action="ASK_DESTROY" />
+		<image type="GUI" file="3" sequence="198" />
+		<image type="GUI" file="3" sequence="198" />
+	</element>
+
+	<element x="9" y="219" maxx="127" maxy="232" id="nameText" class="jsettlers.graphics.map.controls.original.panel.selection.BuildingSelectionContent.NamePanel">
+	</element>
+
+	<element x="14" y="306" width="108" height="108" class="jsettlers.graphics.map.controls.original.panel.button.stock.StockControlButton.Array"/>
+
+
+	<!-- Buttons -->
+	<element x="90" y="400" width="18" height="18" id="stock_accept" class="jsettlers.graphics.map.controls.original.panel.button.stock.StockChangeAcceptButton">
+		<image type="GUI" file="3" sequence="213" />
+		<localized label="stock-material-local"/>
+	</element>
+	<element x="108" y="400" width="18" height="18" id="stock_reject" class="jsettlers.graphics.map.controls.original.panel.button.stock.StockChangeAcceptButton">
+		<image type="GUI" file="3" sequence="216" />
+		<localized label="dont-stock-material-local"/>
+	</element>
+</element>

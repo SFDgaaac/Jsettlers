@@ -1,0 +1,72 @@
+apply plugin: 'java-library'
+
+
+import jsettlers.textures.generation.TextureGenerationTask
+import org.eclipse.jgit.lib.Repository
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+
+
+def generatedDirectory = 'src/generated/'
+def generatedCommitInfoDirectory = generatedDirectory + 'commitInfo/java/'
+def generatedTexturesJavaDirectory = generatedDirectory + 'textures/java'
+def generatedTexturesResourcesDirectory = generatedDirectory + 'textures/resources'
+
+
+task compileTextures(type: TextureGenerationTask) {
+    resourceDirectory = file('raw_images_for_textures')
+    generatedSourcesDirectory = file(generatedTexturesJavaDirectory)
+    generatedResourcesDirectory = file(generatedTexturesResourcesDirectory)
+}
+
+task findGitRevision {
+    def commitFile = file(generatedCommitInfoDirectory + 'jsettlers/common/CommitInfo.java')
+
+    FileRepositoryBuilder builder = new FileRepositoryBuilder()
+    Repository repository = builder.readEnvironment().findGitDir(file('.')).build()
+    def headRef = repository.exactRef("HEAD")
+    def localRev = headRef.objectId.name
+    repository.close()
+
+    onlyIf {
+        !commitFile.isFile() || !commitFile.text.contains(localRev)
+    }
+    doLast {
+        commitFile.parentFile.mkdirs()
+        commitFile.text = sprintf("""package jsettlers.common;
+public final class CommitInfo {
+	/**
+	 * The current commit this was build with, as extracted from git.
+	 */
+	public static final String COMMIT_HASH_SHORT = "%s";
+	public static final String COMMIT_HASH = "%s";
+	public static final String BUILD_TIME = "%s";
+	private CommitInfo() {
+	}
+}""", localRev.substring(0, 8), localRev, (new Date()).format('yyyy-MM-dd-HH-mm-ss'))
+    }
+}
+
+
+
+sourceSets {
+    main.java.srcDirs += [generatedTexturesJavaDirectory, generatedCommitInfoDirectory]
+    main.resources.srcDirs += [generatedTexturesResourcesDirectory]
+}
+
+compileJava {
+    dependsOn compileTextures
+    dependsOn findGitRevision
+}
+
+clean {
+    delete generatedDirectory
+}
+
+dependencies {
+    api project(':go.graphics')
+    testImplementation project(':jsettlers.testutils')
+}
+
+copyMainResources {
+    dependsOn compileTextures
+}

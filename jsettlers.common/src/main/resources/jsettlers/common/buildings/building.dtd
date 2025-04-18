@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!ENTITY % imagelinktype "(SETTLER| GUI| LANDSCAPE)">
+
+<!ENTITY % material "(
+	NO_MATERIAL|
+	AXE|
+	BOW|
+	BLADE|
+	BREAD|
+	COAL|
+	CROP|
+	FISH|
+	FISHINGROD|
+	FLOUR|
+	GOLD|
+	GOLDORE|
+	HAMMER|
+	IRON|
+	IRONORE|
+	MEAT|
+	PICK|
+	PIG|
+	PLANK|
+	SAW|
+	SCYTHE|
+	SPEAR|
+	STONE|
+	SWORD|
+	TRUNK|
+	WATER|
+	WINE|
+	GEMS|
+	SULFUR|
+	RICE|
+	KEG|
+	LIQUOR|
+	GUN_POWDER|
+	CANNON_AMMO|
+	BALLISTA_AMMO|
+	CATAPULT_AMMO|
+	WHITE_BREAD|
+	BASKET|
+	TREE|
+	PLANT|
+	HONEY|
+	MEAD|
+	EMPTY_BUCKET)
+">
+
+<!ENTITY % direction "(EAST| SOUTH_EAST| SOUTH_WEST| WEST | NORTH_WEST | NORTH_EAST)">
+
+<!ENTITY % searchtype "(
+	FOREIGN_GROUND|
+	CUTTABLE_TREE|
+	CUTTABLE_STONE|
+	PLANTABLE_TREE|
+	PLANTABLE_CORN|
+	CUTTABLE_CORN|
+	PLANTABLE_WINE|
+	HARVESTABLE_WINE|
+	PLANTABLE_RICE|
+	HARVESTABLE_RICE|
+	PLANTABLE_HIVE|
+	HARVESTABLE_HIVE|
+	FISHABLE|
+	RIVER|
+	ENEMY)
+">
+<!ENTITY % groundtype "(
+	GRASS|
+	DRY_GRASS|
+	DESERT|
+	EARTH|
+	MOUNTAIN|
+	SNOW|
+	WATER|
+	SAND|
+	FLATTENED|
+	RIVER1|
+	RIVER2|
+	RIVER3|
+	RIVER4|
+	MOUNTAINBORDER|
+	MOUNTAINBORDEROUTER|
+	DESERTBORDER|
+	DESERTBORDEROUTER|
+	DRY_GRASS|
+	SHARP_FLATTENED_DESERT|
+	FLATTENED_DESERT
+)">
+<!ENTITY % boolean "(true|false)">
+
+<!ELEMENT building (ground+, blocked+, door, constructionStack+, requestStack*, offerStack*, bricklayer+, flag, buildmark*, workcenter?, smokePosition?, healspot?, pigFeedPosition?, donkeyFeedPosition*, sawmillerWorkPosition?, ovenPosition?, animalPosition*, mine?, moltenMetal?, meltInput?, meltOutput?, anvilPosition?, smithDropPosition?, image*, occupyer*) >
+
+<!ATTLIST building
+   	worker CDATA #REQUIRED
+	workradius CDATA #IMPLIED
+	viewdistance CDATA "5"
+	mine (true|false) "false"
+>
+
+<!ELEMENT ground EMPTY>
+<!ATTLIST ground
+	groundtype %groundtype; #REQUIRED
+>
+
+<!ELEMENT workcenter EMPTY>
+<!ATTLIST workcenter
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+<!ELEMENT blocked EMPTY>
+<!ATTLIST blocked
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   block (true|false) "true"
+>
+
+<!ELEMENT door EMPTY>
+<!ATTLIST door
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+
+<!ELEMENT flag EMPTY>
+<!ATTLIST flag
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+
+<!ELEMENT constructionStack EMPTY>
+<!ATTLIST constructionStack
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   buildrequired CDATA #REQUIRED
+   material %material; #REQUIRED
+>
+
+<!ELEMENT requestStack EMPTY>
+<!ATTLIST requestStack
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   material %material; #REQUIRED
+>
+
+<!ELEMENT offerStack EMPTY>
+<!ATTLIST offerStack
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   material %material; #REQUIRED
+>
+
+<!ELEMENT bricklayer EMPTY>
+<!ATTLIST bricklayer
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   direction %direction; #REQUIRED
+>
+
+<!ELEMENT occupyer EMPTY>
+<!ATTLIST occupyer
+   offsetX CDATA #IMPLIED
+   offsetY CDATA #IMPLIED
+   type (INFANTRY|BOWMAN) #REQUIRED
+
+   soldierX CDATA #REQUIRED
+   soldierY CDATA #REQUIRED
+   looksRight (true|false) "true"
+>
+
+<!ELEMENT image EMPTY>
+<!ATTLIST image
+   for (GUI|BUILD|FINAL) #REQUIRED
+   name CDATA #IMPLIED
+   type %imagelinktype; #IMPLIED
+   file CDATA #IMPLIED
+   sequence CDATA #IMPLIED
+   image CDATA #REQUIRED
+>
+
+<!ELEMENT buildmark EMPTY>
+<!ATTLIST buildmark
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+<!ELEMENT smokePosition EMPTY>
+<!ATTLIST smokePosition
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   fire (true|false) "false"
+>
+
+
+<!ELEMENT healspot EMPTY>
+<!ATTLIST healspot
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+<!ELEMENT animalPosition EMPTY>
+<!ATTLIST animalPosition
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+<!ELEMENT pigFeedPosition EMPTY>
+<!ATTLIST pigFeedPosition
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+>
+
+<!ELEMENT donkeyFeedPosition EMPTY>
+<!ATTLIST donkeyFeedPosition
+	dx CDATA #REQUIRED
+	dy CDATA #REQUIRED
+	direction %direction; #REQUIRED
+>
+
+<!ELEMENT sawmillerWorkPosition EMPTY>
+<!ATTLIST sawmillerWorkPosition
+	dx CDATA #REQUIRED
+	dy CDATA #REQUIRED
+	direction %direction; #REQUIRED
+>
+
+
+<!ELEMENT ovenPosition EMPTY>
+<!ATTLIST ovenPosition
+   dx CDATA #REQUIRED
+   dy CDATA #REQUIRED
+   direction %direction; #REQUIRED
+>
+
+<!ELEMENT mine EMPTY>
+<!ATTLIST mine
+	dropDirection %direction; #REQUIRED
+	miningInterval CDATA #REQUIRED
+	foodOrder CDATA #REQUIRED
+>
+
+<!ELEMENT moltenMetal EMPTY>
+<!ATTLIST moltenMetal
+	dx CDATA #REQUIRED
+	dy CDATA #REQUIRED
+>
+
+<!ELEMENT meltInput EMPTY>
+<!ATTLIST meltInput
+	dx CDATA #REQUIRED
+	dy CDATA #REQUIRED
+	direction %direction; #REQUIRED
+	material %material; #REQUIRED
+>
+
+<!ELEMENT meltOutput EMPTY>
+<!ATTLIST meltOutput
+	dx CDATA #REQUIRED
+	dy CDATA #REQUIRED
+	direction %direction; #REQUIRED
+	material %material; #REQUIRED
+>
+
+<!ELEMENT anvilPosition EMPTY>
+<!ATTLIST anvilPosition
+		dx CDATA #REQUIRED
+		dy CDATA #REQUIRED
+		direction %direction; #REQUIRED
+>
+
+<!ELEMENT smithDropPosition EMPTY>
+<!ATTLIST smithDropPosition
+		dx CDATA #REQUIRED
+		dy CDATA #REQUIRED
+>
